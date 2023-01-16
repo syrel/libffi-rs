@@ -58,6 +58,8 @@ pub fn configure_libffi(prefix: PathBuf, build_dir: &Path) {
         // Autoconf uses riscv64 while Rust uses riscv64gc for the architecture
         if target == "riscv64gc-unknown-linux-gnu" {
             command.arg("--host=riscv64-unknown-linux-gnu");
+        } else if target == "aarch64-apple-ios-sim" {
+            command.arg("--host=aarch64-apple-ios");
         } else {
             command.arg(format!("--host={}", target));
         }
