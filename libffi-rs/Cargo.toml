@@ -1,6 +1,6 @@
 [package]
 name = "libffi"
-version = "3.0.0"
+version = "3.1.0"
 authors = ["Jesse A. Tov <jesse.tov@gmail.com>"]
 description = "Rust bindings for libffi"
 repository = "https://github.com/tov/libffi-rs"
@@ -11,8 +11,7 @@ categories = ["development-tools::ffi"]
 edition = "2018"
 
 [dependencies]
-libffi-sys = { path = "../libffi-sys-rs" }
-abort_on_panic = "2.0.0"
+libffi-sys = { path = "../libffi-sys-rs", version = "^2.1" }
 libc = "0.2.65"
 
 [features]

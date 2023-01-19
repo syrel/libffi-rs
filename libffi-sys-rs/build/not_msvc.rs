@@ -55,14 +55,18 @@ pub fn configure_libffi(prefix: PathBuf, build_dir: &Path) {
     let target = std::env::var("TARGET").unwrap();
     let host = std::env::var("HOST").unwrap();
     if target != host {
-        // Autoconf uses riscv64 while Rust uses riscv64gc for the architecture
-        if target == "riscv64gc-unknown-linux-gnu" {
-            command.arg("--host=riscv64-unknown-linux-gnu");
-        } else if target == "aarch64-apple-ios-sim" {
-            command.arg("--host=aarch64-apple-ios");
-        } else {
-            command.arg(format!("--host={}", target));
-        }
+        let cross_host = match target.as_str() {
+            // Autoconf uses riscv64 while Rust uses riscv64gc for the architecture
+            "riscv64gc-unknown-linux-gnu" => "riscv64-unknown-linux-gnu",
+            // Autoconf does not yet recognize illumos, but Solaris should be fine
+            "x86_64-unknown-illumos" => "x86_64-unknown-solaris",
+            // configure.host does not extract `ios-sim` as OS.
+            // The sources for `ios-sim` should be the same as `ios`.
+            "aarch64-apple-ios-sim" => "aarch64-apple-ios",
+            // Everything else should be fine to pass straight through
+            other => other,
+        };
+        command.arg(format!("--host={}", cross_host));
     }
 
     let mut c_cfg = cc::Build::new();
