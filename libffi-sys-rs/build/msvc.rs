@@ -30,8 +30,9 @@ fn add_file(build: &mut cc::Build, file: &str) {
 }
 
 pub fn build_and_link() {
-    let target_arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-    let asm_path = pre_process_asm(INCLUDE_DIRS, target_arch.as_str());
+    let target = env::var("TARGET").unwrap();
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+    let asm_path = pre_process_asm(INCLUDE_DIRS, &target, &target_arch);
     let mut build = cc::Build::new();
 
     for inc in INCLUDE_DIRS {
@@ -59,7 +60,7 @@ pub fn probe_and_link() {
     build_and_link();
 }
 
-pub fn pre_process_asm(include_dirs: &[&str], target_arch: &str) -> String {
+pub fn pre_process_asm(include_dirs: &[&str], target: &str, target_arch: &str) -> String {
     let folder_name = match target_arch {
         "x86_64" => "x86",
         "x86" => "x86",
@@ -74,12 +75,12 @@ pub fn pre_process_asm(include_dirs: &[&str], target_arch: &str) -> String {
         _ => panic!("Unsupported arch: {}", target_arch),
     };
 
-    let mut cmd = cc::windows_registry::find(&env::var("TARGET").unwrap(), "cl.exe")
-        .expect("Could not locate cl.exe");
+    let mut cmd = cc::windows_registry::find(target, "cl.exe").expect("Could not locate cl.exe");
 
+    // When cross-compiling we should provide MSVC includes as part of the INCLUDE env.var
     let build = cc::Build::new();
     for (key, value) in build.get_compiler().env() {
-        if key.to_string_lossy().to_string() == "INCLUDE".to_string() {
+        if key.to_string_lossy() == "INCLUDE" {
             cmd.env(
                 "INCLUDE",
                 format!("{};{}", value.to_string_lossy(), include_dirs.join(";")),
