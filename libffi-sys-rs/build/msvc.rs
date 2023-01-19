@@ -1,12 +1,15 @@
 use crate::common::*;
 
-const INCLUDE_DIRS: &[&str] = &["libffi", "libffi/include", "include/msvc"];
-
-const INCLUDE_DIRS_AARCH64: &[&str] = &[
+const INCLUDE_DIRS: &[&str] = &[
+    "libffi",
+    "libffi/include",
+    "include/msvc",
+    // libffi expects us to include the same folder in case of x86 and x86_64 architectures
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    "libffi/src/x86",
+    #[cfg(target_arch = "aarch64")]
     "libffi/src/aarch64",
-    "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\shared",
 ];
-const INCLUDE_DIRS_X86: &[&str] = &["libffi/src/x86"];
 
 const BUILD_FILES: &[&str] = &[
     "tramp.c",
@@ -14,11 +17,13 @@ const BUILD_FILES: &[&str] = &[
     "prep_cif.c",
     "raw_api.c",
     "types.c",
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    "x86/ffi.c",
+    #[cfg(any(target_arch = "x86_64"))]
+    "x86/ffiw64.c",
+    #[cfg(target_arch = "aarch64")]
+    "aarch64/ffi.c",
 ];
-
-const BUILD_FILES_AARCH64: &[&str] = &["aarch64/ffi.c"];
-const BUILD_FILES_X86: &[&str] = &["x86/ffi.c"];
-const BUILD_FILES_X86_64: &[&str] = &["x86/ffi.c", "x86/ffiw64.c"];
 
 fn add_file(build: &mut cc::Build, file: &str) {
     build.file(format!("libffi/src/{}", file));
@@ -26,41 +31,14 @@ fn add_file(build: &mut cc::Build, file: &str) {
 
 pub fn build_and_link() {
     let target_arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-    let target_includes = match target_arch.as_str() {
-        "x86_64" | "x86" => INCLUDE_DIRS_X86,
-        "aarch64" => INCLUDE_DIRS_AARCH64,
-        _ => panic!("Unsupported arch: {}", &target_arch),
-    };
-
-    let mut all_includes = vec![];
-    all_includes.extend(INCLUDE_DIRS);
-    all_includes.extend(target_includes);
-
-    let asm_path = pre_process_asm(all_includes.as_slice(), target_arch.as_str());
+    let asm_path = pre_process_asm(INCLUDE_DIRS, target_arch.as_str());
     let mut build = cc::Build::new();
 
-    for inc in all_includes {
-        build.include(inc);
-    }
-
-    for inc in match target_arch.as_str() {
-        "x86_64" | "x86" => INCLUDE_DIRS_X86,
-        "aarch64" => INCLUDE_DIRS_AARCH64,
-        _ => panic!("Unsupported arch: {}", &target_arch),
-    } {
+    for inc in INCLUDE_DIRS {
         build.include(inc);
     }
 
     for file in BUILD_FILES {
-        add_file(&mut build, file);
-    }
-
-    for file in match target_arch.as_str() {
-        "x86_64" => BUILD_FILES_X86_64,
-        "x86" => BUILD_FILES_X86,
-        "aarch64" => BUILD_FILES_AARCH64,
-        _ => panic!("Unsupported arch: {}", &target_arch),
-    } {
         add_file(&mut build, file);
     }
 
